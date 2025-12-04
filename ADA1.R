@@ -12,6 +12,9 @@ library(officer)
 library(DiagrammeR)
 library(DiagrammeRsvg)
 library(rsvg)
+library(car)
+install.packages("ResourceSelection")
+library(ResourceSelection)
 
 #Setting working directory
 getwd()
@@ -326,6 +329,36 @@ doc <- read_docx()
 doc <- body_add_par(doc, "Table 1. Participant Characteristics by Diabetes Status", style = "heading 1")
 doc <- body_add_flextable(doc, table1_flex)
 print(doc, target = "Table1_Descriptives_By_Diabetes.docx")
+
+#Checking assumptions
+#Multicolinearity
+cc <- haalsi %>%
+  select(func_limit, diabetes, sex, wealth, bmi_cat, marital,
+         smoke, alcohol, age_group) %>%
+  na.omit()
+
+model_check <- glm(
+  func_limit ~ diabetes + sex + wealth + bmi_cat +
+    marital + smoke + alcohol + age_group,
+  data = cc,
+  family = binomial
+)
+
+
+vif(model_check)
+## Variance inflation factors (VIFs) were examined to assess multi-collinearity among predictors.No multi-collinearity
+
+#Goodness of fit
+cc$func_limit_num <- ifelse(cc$func_limit == "Has limitation", 1, 0)
+model_check <- glm(
+  func_limit_num ~ diabetes + sex + wealth + bmi_cat +
+    marital + smoke + alcohol + age_group,
+  data = cc,
+  family = binomial
+)
+
+hoslem.test(cc$func_limit_num, fitted(model_check), g = 10)
+##p-value >0.05, indication good model fit
 
 
 #Un-adjusted model with only diabetes and functional limitation
